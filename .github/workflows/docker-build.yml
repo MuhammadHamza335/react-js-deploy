@@ -23,4 +23,4 @@ jobs:
         with:
           context: .
           file: Dockerfile
-          tags: ${{ secrets.DOCKER_USERNAME }}/devops-react-demo:latest
+          tags: ${{ secrets.DOCKER_USERNAME }}/react-devopstest:tagname
