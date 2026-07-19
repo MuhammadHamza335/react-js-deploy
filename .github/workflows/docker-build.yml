@@ -1,16 +1,25 @@
 name: Docker Build and Push
 
+permissions:
+  contents: write
+
 on:
   push:
     branches:
       - main
+    paths-ignore:
+      - "react-devops/values.yaml"
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -18,12 +27,33 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and push Docker image
+      - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
         with:
           context: .
-          file:
+          file: ./Dockerfile
           push: true
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/react-devopstest:latest
             ${{ secrets.DOCKER_USERNAME }}/react-devopstest:${{ github.sha }}
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Update Helm values.yaml
+        run: |
+          sed -i 's|tag: ".*"|tag: "${{ github.sha }}"|' react-devops/values.yaml
+
+      - name: Commit and Push Updated values.yaml
+        run: |
+          git add react-devops/values.yaml
+
+          if git diff --cached --quiet; then
+            echo "No changes detected."
+            exit 0
+          fi
+
+          git commit -m "ci: update image tag to ${{ github.sha }}"
+          git push origin HEAD:main
